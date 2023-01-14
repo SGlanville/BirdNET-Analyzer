@@ -129,17 +129,20 @@ You can download this version here: [BirdNET-Analyzer Windows](https://tuc.cloud
 
 For more advanced use cases (e.g., hosting your own API server), follow these steps to set up BirdNET-Analyzer on your Windows machine:
 
-Install Python 3.8 (has to be 64bit version)
+Install Python 3.10.9 (has to be 64bit version)
 
-- Download and run installer: [Download Python installer](https://www.python.org/ftp/python/3.8.0/python-3.8.0-amd64.exe)
+- Download and run installer: [Download Python installer](https://www.python.org/ftp/python/3.10.9/python-3.10.9-amd64.exe)
 - :exclamation:<b>Make sure to check "Add path to environment variables" during install</b>:exclamation:
 
 Install Tensorflow (has to be 2.5 or later), Librosa and NumPy
 
 - Open command prompt with "Win+S" type "command" and click on "Command Prompt"
 - Type `pip install --upgrade pip`
-- Type `pip install librosa numpy==1.20`
+- Type `pip install librosa numpy==1.23.5`
 - Install Tensorflow by typing `pip install tensorflow`
+- Install Tensorflow by typing `pip install ffmpeg-python`
+- Install Tensorflow by typing `pip install twitch-chat-irc`
+Download ffmpeg and install into your extracted folder named "BirdNET-Analyzer"
 
 <b>NOTE</b>: You might need to run the command prompt as "administrator". Type "Win+S", search for command prompt and then right-click, select "Run as administrator".
 
