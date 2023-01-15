@@ -1,11 +1,15 @@
 import os
+import io
 import sys
+import numpy as np
+import requests
 import json
 import operator
 import argparse
 import datetime
 import traceback
 import time
+from tzlocal import get_localzone
 
 import numpy as np
 import rtspMonitor
@@ -14,6 +18,10 @@ import config as cfg
 import model
 
 RANDOM = np.random.RandomState(cfg.RANDOM_SEED)
+
+BIRDWEATHER_ID = "99999"
+BIRDWEATHER_LON = "00.000"
+BIRDWEATHER_LAT = "00.000"
 
 def clearErrorLog():
 
@@ -78,6 +86,13 @@ def predict(samples):
 
     return prediction
 
+def chunkToWav(sig):
+
+    import soundfile as sf
+    wav_io = io.BytesIO()
+    sf.write(wav_io, sig, 48000, 'PCM_16',format='WAV')
+    return wav_io.getbuffer().tobytes()
+
 def monitorStream( cfg ):
     lstCommon = ["Cyanocitta cristata_Blue Jay", "Dryobates pubescens_Downy Woodpecker", "Dryobates villosus_Hairy Woodpecker","Poecile atricapillus_Black-capped Chickadee","Poecile hudsonicus_Boreal Chickadee","Sitta carolinensis_White-breasted Nuthatch"] 
     #lstCommon = ["Poecile atricapillus_Black-capped Chickadee"] 
@@ -122,6 +137,14 @@ def monitorStream( cfg ):
                 # Predict
                 p = predict(samples)
 
+                soundscape_uploaded = False
+                soundscape_id = ""
+
+                dtm_obs = datetime.datetime.now() - datetime.timedelta(seconds=3)
+                obs_date = dtm_obs.strftime("%Y-%m-%d")
+                obs_time = dtm_obs.strftime("%H:%M:%S")
+                obs_iso8601 = dtm_obs.astimezone(get_localzone()).isoformat()
+
                 # Add to results
                 for i in range(len(samples)):
 
@@ -134,6 +157,17 @@ def monitorStream( cfg ):
                     # Assign scores to labels
                     p_labels = dict(zip(cfg.LABELS, pred))
 
+                    #HUMAN_DETECTED = False
+
+                    # Catch if Human is recognized
+                    #for x in range(len(p_labels)):
+                    #    if "Human" in p_labels[x][0]:
+                    #        HUMAN_DETECTED = True
+
+                    # If human detected set all detections to human to make sure voices are not saved
+                    #if HUMAN_DETECTED is True:
+                    #    p_labels = [('Human_Human', 0.0)] * 10
+
                     # Sort by score
                     p_sorted =  sorted(p_labels.items(), key=operator.itemgetter(1), reverse=True)
 
@@ -142,7 +176,7 @@ def monitorStream( cfg ):
                         if p_bird[1] > cfg.MIN_CONFIDENCE and p_bird[0] in cfg.CODES and (p_bird[0] in cfg.SPECIES_LIST or len(cfg.SPECIES_LIST) == 0):
                             label = cfg.TRANSLATED_LABELS[cfg.LABELS.index(p_bird[0])]
                             resultMessage = '\n{}\t{}\t{:2.2f}%\n'.format(
-                                datetime.datetime.now().strftime("%H:%M:%S"),
+                                dtm_obs.strftime("%H:%M:%S"),
                                 label.split('_')[1], 
                                 100*p_bird[1])
                             #if last_bird != p_bird[0] or time.time() > last_msg_time + 30:
@@ -150,9 +184,51 @@ def monitorStream( cfg ):
                             last_msg_time = time.time()
                             last_bird = p_bird[0]
                             if p_bird[0] not in lstCommon:
-                                rare_name = '{}_{}_{:.3f}.wav'.format(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S"),p_bird[0],p_bird[1])
+                                rare_name = '{}_{}_{:.3f}.wav'.format(dtm_obs.strftime("%Y_%m_%d_%H_%M_%S"),p_bird[0],p_bird[1])
                                 rare_path = os.path.join(os.path.join(os.path.dirname(os.path.abspath(sys.argv[0]))), rare_name)
                                 rtspMonitor.saveSignal(chunks[c], rare_path)
+                            if BIRDWEATHER_ID != "99999":
+                                #try:
+                                if soundscape_uploaded is False:
+                                    # POST soundscape to server
+                                    soundscape_url = 'https://app.birdweather.com/api/v1/stations/' + \
+                                        BIRDWEATHER_ID + \
+                                        '/soundscapes' + \
+                                        '?timestamp=' + \
+                                        obs_iso8601
+
+                                    # Convert chunk to wav format (16 bits)
+                                    #wav_data = np.array(chunks[c], dtype=np.int16).tobytes()
+                                    wav_data = chunkToWav( chunks[c] )
+
+                                    response = requests.post(url=soundscape_url, data=wav_data, headers={'Content-Type': 'application/octet-stream'})
+                                    print("Soundscape POST Response Status - ", response.status_code)
+                                    sdata = response.json()
+                                    soundscape_id = sdata['soundscape']['id']
+                                    soundscape_uploaded = True
+
+                                # POST detection to server
+                                detection_url = "https://app.birdweather.com/api/v1/stations/" + BIRDWEATHER_ID + "/detections"
+                                post_begin = "{ "
+                                post_timestamp = "\"timestamp\": \"" + obs_iso8601 + "\","
+                                post_lat = "\"lat\": " + BIRDWEATHER_LAT + ","
+                                post_lon = "\"lon\": " + BIRDWEATHER_LON + ","
+                                post_soundscape_id = "\"soundscapeId\": " + str(soundscape_id) + ","
+                                post_soundscape_start_time = "\"soundscapeStartTime\": 0.0,"
+                                post_soundscape_end_time = "\"soundscapeEndTime\": 3.0,"
+                                post_commonName = "\"commonName\": \"" + label.split('_')[1] + "\","
+                                post_scientificName = "\"scientificName\": \"" + label.split('_')[0] + "\","
+                                post_algorithm = "\"algorithm\": " + "\"alpha\"" + ","
+                                post_confidence = "\"confidence\": " + str(p_bird[1])
+                                post_end = " }"
+
+                                post_json = post_begin + post_timestamp + post_lat + post_lon + post_soundscape_id + post_soundscape_start_time + \
+                                    post_soundscape_end_time + post_commonName + post_scientificName + post_algorithm + post_confidence + post_end
+                                print(post_json)
+                                response = requests.post(detection_url, json=json.loads(post_json))
+                                print("Detection POST Response Status - ", response.status_code)
+                                #except BaseException:
+                                #    print("Cannot POST right now")
 
                 # Clear batch
                 samples = []
