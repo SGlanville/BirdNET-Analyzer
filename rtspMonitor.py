@@ -77,7 +77,7 @@ def latestSignal(sig, seconds, minSeconds):
     # Split signal with overlap
     if siglen < int(minSeconds * 48000):
         return []
-    if siglen > chunkLen:
+    if siglen == chunkLen:
         return sig
     if siglen > chunkLen:
         return sig[-chunkLen:]

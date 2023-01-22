@@ -194,8 +194,11 @@ def monitorStream( cfg ):
                             last_msg_time = time.time()
                             last_bird = p_bird[0]
                             if p_bird[0] not in lstCommon:
-                                rare_name = '{}_{}_{:.3f}.wav'.format(dtm_obs.strftime("%Y_%m_%d\%H_%M_%S"),p_bird[0],p_bird[1])
-                                rare_path = os.path.join(os.path.join(os.path.dirname(os.path.abspath(sys.argv[0]))), rare_name)
+                                dir_name = os.path.join( os.path.dirname(os.path.abspath(sys.argv[0])), dtm_obs.strftime("%Y-%m-%d") )
+                                if not os.path.exists(dir_name):
+                                    os.makedirs(dir_name)
+                                rare_name = '{}_{}_{:.3f}.wav'.format(dtm_obs.strftime("%H-%M-%S"),p_bird[0],p_bird[1])
+                                rare_path = os.path.join(dir_name, rare_name)
                                 rtspMonitor.saveSignal(chunk, rare_path)
                             if BIRDWEATHER_ID != "99999":
                                 try:
