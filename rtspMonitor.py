@@ -14,10 +14,11 @@ class AudioHandler(object):
         self.CODEC = 'pcm_f32le'
         self.CHANNELS = 1
         self.RATE = '48k'
-        self.CHUNK = 1024
+        self.CHUNK = 4096
         self.t = None
         self.stream = None
         self.audio_frames = []
+        self.is_active = True
 
     def listen(self):
         self.stream = (
@@ -30,6 +31,8 @@ class AudioHandler(object):
         while self.stream.poll() is None:
             in_data = self.stream.stdout.read(self.CHUNK)
             self.audio_frames.append( np.frombuffer(in_data, dtype=np.float32) )
+            if not self.is_active: 
+                break
 
 	# Launches the video recording function using a thread			
     def start(self):
@@ -37,13 +40,17 @@ class AudioHandler(object):
         self.t.start()
 
     def stop(self):
-        self.t.stop() 
+        self.is_active = False
 
     def getRawAudio(self):
+        if not self.t.is_alive():
+            self.start()
         frames = self.audio_frames
         self.audio_frames = []
-        numpy_array = np.concatenate( frames )
-        return np.concatenate( frames )
+        if len(frames) <= 1:
+            return frames
+        else:
+            return np.concatenate( frames )
 
 def saveSignal(sig, fname):
 
@@ -64,21 +71,15 @@ def noise(sig, shape, amount=None):
 
     return noise.astype('float32')
 
-def splitSignal(sig, rate, seconds, overlap, minlen):
-
+def latestSignal(sig, seconds, minSeconds):
+    chunkLen = int(48000 * seconds)
+    siglen = len(sig)
     # Split signal with overlap
-    sig_splits = []
-    for i in range(0, len(sig), int((seconds - overlap) * rate)):
-        split = sig[i:i + int(seconds * rate)]
+    if siglen < int(minSeconds * 48000):
+        return []
+    if siglen > chunkLen:
+        return sig
+    if siglen > chunkLen:
+        return sig[-chunkLen:]
 
-        # End of signal?
-        if len(split) < int(minlen * rate):
-            break
-        
-        # Signal chunk too short?
-        if len(split) < int(rate * seconds):
-            split = np.hstack((split, noise(split, (int(rate * seconds) - len(split)), 0.5)))
-        
-        sig_splits.append(split)
-
-    return sig_splits
+    return np.hstack((sig, noise(sig, chunkLen - siglen, 0.5)))
