@@ -231,7 +231,7 @@ def monitorStream( cfg ):
                                     post_soundscape_end_time = "\"soundscapeEndTime\": 3.0,"
                                     post_commonName = "\"commonName\": \"" + label.split('_')[1] + "\","
                                     post_scientificName = "\"scientificName\": \"" + label.split('_')[0] + "\","
-                                    post_algorithm = "\"algorithm\": " + "\"alpha\"" + ","
+                                    post_algorithm = "\"algorithm\": " + "\"2p2\"" + ","
                                     post_confidence = "\"confidence\": " + str(p_bird[1])
                                     post_end = " }"
 

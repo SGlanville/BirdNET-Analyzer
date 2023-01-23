@@ -40,6 +40,8 @@ class AudioHandler(object):
         self.t.start()
 
     def stop(self):
+        self.stream.communicate(str.encode("q"))
+        time.sleep(1.0)
         self.is_active = False
 
     def getRawAudio(self):
