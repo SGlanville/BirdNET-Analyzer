@@ -34,7 +34,7 @@ This work is licensed under a
 
 ## About
 
-Developed by the [K. Lisa Yang Center for Conservation Bioacoustics](https://www.birds.cornell.edu/ccb/) at the [Cornell Lab of Ornithology](https://www.birds.cornell.edu/home).
+Developed by the [K. Lisa Yang Center for Conservation Bioacoustics](https://www.birds.cornell.edu/ccb/) at the [Cornell Lab of Ornithology](https://www.birds.cornell.edu/home) in collaboration with [Chemnitz University of Technology](https://www.tu-chemnitz.de/index.html.en).
 
 Go to https://birdnet.cornell.edu to learn more about the project.
 
@@ -49,13 +49,15 @@ We also have a discussion forum on Reddit if you have a general question or just
 ## Contents
 
 [Model version update](#model-version-update)  
-[Showroom](#showroom)    
+[Showroom](#showroom)  
+[Setup (birdnetlib)](#setup-birdnetlib)  
 [Setup (Ubuntu)](#setup-ubuntu)  
 [Setup (Windows)](#setup-windows)  
 [Usage](#usage)  
 [Usage (Docker)](#usage-docker)  
 [Usage (Server)](#usage-server)   
 [Usage (GUI)](#usage-gui)  
+[Training](#training)  
 [Funding](#funding)  
 [Partners](#partners)
 
@@ -82,28 +84,60 @@ BirdNET powers a number of fantastic community projects dedicated to bird song i
 
 Working on a cool project that uses BirdNET? Let us know and we can feature your project here.
 
+## Setup (birdnetlib)
+
+The easiest way to setup BirdNET on your machine is to install [birdnetlib](https://pypi.org/project/birdnetlib/) through pip with:
+
+```
+pip3 install birdnetlib
+```
+
+Make sure to install Tensorflow Lite, librosa and ffmpeg like mentioned below. You can run BirdNET with:
+
+```
+from birdnetlib import Recording
+from birdnetlib.analyzer import Analyzer
+from datetime import datetime
+
+# Load and initialize the BirdNET-Analyzer models.
+analyzer = Analyzer()
+
+recording = Recording(
+    analyzer,
+    "sample.mp3",
+    lat=35.4244,
+    lon=-120.7463,
+    date=datetime(year=2022, month=5, day=10), # use date or week_48
+    min_conf=0.25,
+)
+recording.analyze()
+print(recording.detections)
+```
+
+For more examples and documentation, make sure to visit [pypi.org/project/birdnetlib/](https://pypi.org/project/birdnetlib/). For any feature request or questions regarding <b>birdnetlib</b>, please contact [Joe Weiss](mailto:joe.weiss@gmail.com) or add an issue or PR at [github.com/joeweiss/birdnetlib](https://github.com/joeweiss/birdnetlib).
+
 ## Setup (Ubuntu)
 
 Install Python 3:
 ```
 sudo apt-get update
 sudo apt-get install python3-dev python3-pip
-sudo pip3 install --upgrade pip
+pip3 install --upgrade pip
 ```
 
 Install TFLite runtime (recommended) or Tensorflow (has to be 2.5 or later):
 ```
-sudo pip3 install tflite-runtime
+pip3 install tflite-runtime
 
 OR
 
-sudo pip3 install tensorflow
+pip3 install tensorflow
 ```
 
 Install Librosa to handle audio files:
 
 ```
-sudo pip3 install librosa
+pip3 install librosa
 sudo apt-get install ffmpeg
 ```
 
@@ -260,8 +294,8 @@ Here's a complete list of all command line arguments:
 
 ```
 --o, Path to output file or folder. If this is a folder, file will be named 'species_list.txt'.
---lat, Recording location latitude. Set -1 to ignore.
---lon, Recording location longitude. Set -1 to ignore.
+--lat, Recording location latitude.
+--lon, Recording location longitude.
 --week, Week of the year when the recording was made. Values in [1, 48] (4 weeks per month). Set -1 for year-round species list.
 --threshold, Occurrence frequency threshold. Defaults to 0.05.
 --sortby, Sort species by occurrence frequency or alphabetically. Values in ['freq', 'alpha']. Defaults to 'freq'.
@@ -294,19 +328,19 @@ In order to pass a directory that contains your audio files to the docker file, 
 You can run the container for the provided example soundscapes with:
 
 ```
-sudo docker run -v $PWD/example:/audio birdnet --i audio --o audio --slist audio
+sudo docker run -v $PWD/example:/audio birdnet analyze.py --i audio --o audio --slist audio
 ```
 
 You can adjust the directory that contains your recordings by providing an absolute path:
 
 ```
-sudo docker run -v /path/to/your/audio/files:/audio birdnet --i audio --o audio --slist audio
+sudo docker run -v /path/to/your/audio/files:/audio birdnet analyze.py --i audio --o audio --slist audio
 ```
 
 You can also mount more than one drive, e.g., if input and output folder should be different:
 
 ```
-sudo docker run -v /path/to/your/audio/files:/input -v /path/to/your/output/folder:/output birdnet --i input --o output --slist input
+sudo docker run -v /path/to/your/audio/files:/input -v /path/to/your/output/folder:/output birdnet analyze.py --i input --o output --slist input
 ```
 
 See "Usage" section above for more command line arguments, all of them will work with Docker version.
@@ -379,11 +413,15 @@ Status updates should be visible in 'Status' text area.
 
 <b>NOTE</b>: You can easily adjust the interface by editing `gui/index.html` and `gui/style.css`. Feel free to submit your udated (possibly better looking) version through a pull request. 
 
+## Training
+
+The process of training BirdNET can be extremely time-consuming and may not be practical for certain specific applications such as recognizing a single species. To create your own models, we suggest using [koogu](https://github.com/shyamblast/Koogu), which simplifies the training process considerably. All that is needed is a list of audio files and the corresponding species names, organized in folders with folder names as labels.
+
 ## Funding
 
 This project is supported by Jake Holshuh (Cornell class of ’69) and The Arthur Vining Davis Foundations. Our work in the K. Lisa Yang Center for Conservation Bioacoustics is made possible by the generosity of K. Lisa Yang to advance innovative conservation technologies to inspire and inform the conservation of wildlife and habitats.
 
-The European Union and the European Social Fund for Germany partially funded this research. This work was also partially funded by the German Federal Ministry of Education and Research in the program of Entrepreneurial Regions InnoProfileTransfer in the project group localizeIT (funding code 03IPT608X).
+The German Federal Ministry of Education and Research is funding the development of BirdNET through the project "BirdNET+" (FKZ 01|S22072). Additionally, the German Federal Ministry of Environment, Nature Conservation and Nuclear Safety is funding the development of BirdNET through the project "DeepBirdDetect" (FKZ 67KI31040E).
 
 ## Partners
 
